@@ -67,7 +67,7 @@ class $MODEL_NAME$APIController extends ApiBaseController
 
         $$CAMEL_MODEL_NAME$ = $this->$CAMEL_MODEL_NAME$Repository->update($input, $id);
 
-        return $this->sendResponse($$CAMEL_MODEL_NAME$->toArray());
+        return $this->sendResponse(new $MODEL_NAME$Resource($$CAMEL_MODEL_NAME$));
     }
 
 

@@ -1,9 +1,16 @@
 CHANGELOG
 
+2019-04-05, v1.8.9
+-----------------
+* Fixed update response
+
+2019-04-05, v1.8.8
+-----------------
+* Started swagger notations
+
 2019-04-01, v1.8.7
 -----------------
 * Fixed assignment of field_name index in EloquentRepo
-
 
 2019-03-22, v1.8.6
 -----------------
