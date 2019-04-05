@@ -2,6 +2,10 @@
 
 namespace Cws\EloquentModelGenerator\Processor;
 
+use Doctrine\DBAL\Schema\AbstractSchemaManager;
+use Doctrine\DBAL\Schema\Column;
+use Doctrine\DBAL\Schema\Table;
+use Illuminate\Database\DatabaseManager;
 use Cws\CodeGenerator\Model\DocBlockModel;
 use Cws\CodeGenerator\Model\PropertyModel;
 use Cws\CodeGenerator\Model\UseClassModel;
@@ -10,10 +14,6 @@ use Cws\CodeGenerator\Model\VirtualPropertyModel;
 use Cws\EloquentModelGenerator\Config;
 use Cws\EloquentModelGenerator\Model\EloquentModel;
 use Cws\EloquentModelGenerator\TypeRegistry;
-use Doctrine\DBAL\Schema\AbstractSchemaManager;
-use Doctrine\DBAL\Schema\Column;
-use Doctrine\DBAL\Schema\Table;
-use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 
 /**
@@ -81,7 +81,8 @@ class FieldProcessor implements ProcessorInterface
             } else {
                 if (in_array($columnName, $timestampsColumns))
                     $timestampsCounter++;
-                else {
+                else
+                {
                     $mappings[$columnName] = $this->getValidMappingFromColumnType($columnTypeName);
                 }
             }
@@ -122,46 +123,17 @@ class FieldProcessor implements ProcessorInterface
         return $this;
     }
 
-    private function processTranslation(EloquentModel &$model, AbstractSchemaManager $schemaManager)
+    private function checkTimestampsAndSoftDeletes(&$model, $columnNames, $excludeTimestamps = false)
     {
-        $translationTable = $this->checkIfHasTranslation($model, $schemaManager);
-        if (!empty($translationTable)) {
-            $this->getTranslatedAttributes($model, $translationTable);
-            $model->addUses(new UseClassModel("Dimsav\Translatable\Translatable"));
-            $model->addTrait(new UseTraitModel("Translatable"));
+        if (in_array('deleted_at', $columnNames)) {
+            $model->addUses(new UseClassModel("Illuminate\Database\Eloquent\SoftDeletes"));
+            $model->addTrait(new UseTraitModel("SoftDeletes"));
         }
-    }
-
-    private function checkIfHasTranslation(EloquentModel $model, AbstractSchemaManager $schemaManager)
-    {
-        $translationTableName = Str::singular($model->getTableName()) . "_translations";
-        if ($schemaManager->tablesExist([$translationTableName]))
-            return $schemaManager->listTableDetails($translationTableName);
-    }
-
-    private function getTranslatedAttributes(EloquentModel &$model, Table $translationTable)
-    {
-        $columns = [];
-        $primaryColumnNames = $translationTable->getPrimaryKey() ? $translationTable->getPrimaryKey()->getColumns() : [];
-        $foreignKeys = ($translationTable->getForeignKeys());
-        if (count($foreignKeys)) {
-            foreach ($foreignKeys as $fk) {
-                $tableForeignColumns = $fk->getColumns();
-                foreach ($tableForeignColumns as $columnName)
-                    array_push($primaryColumnNames, $columnName);
-            }
+        if ($excludeTimestamps) {
+            $fillableProperty = new PropertyModel('timestamps', 'public', false);
+            $fillableProperty->setDocBlock(new DocBlockModel('@var bool'));
+            $model->addProperty($fillableProperty);
         }
-
-        array_push($primaryColumnNames, "locale");
-        foreach ($translationTable->getColumns() as $column) {
-            if (!in_array($column->getName(), $primaryColumnNames))
-                array_push($columns, $column->getName());
-        }
-        $fillableProperty = new PropertyModel('translatedAttributes');
-        $fillableProperty->setAccess('public')
-            ->setValue($columns)
-            ->setDocBlock(new DocBlockModel('@var array'));
-        $model->addProperty($fillableProperty);
     }
 
     private function getValidMappingFromColumnType($columnType)
@@ -225,24 +197,53 @@ class FieldProcessor implements ProcessorInterface
         return implode("|", $rules);
     }
 
-    private function checkTimestampsAndSoftDeletes(&$model, $columnNames, $excludeTimestamps = false)
-    {
-        if (in_array('deleted_at', $columnNames)) {
-            $model->addUses(new UseClassModel("Illuminate\Database\Eloquent\SoftDeletes"));
-            $model->addTrait(new UseTraitModel("SoftDeletes"));
-        }
-        if ($excludeTimestamps) {
-            $fillableProperty = new PropertyModel('timestamps', 'public', false);
-            $fillableProperty->setDocBlock(new DocBlockModel('@var bool'));
-            $model->addProperty($fillableProperty);
-        }
-    }
-
     /**
      * @inheritdoc
      */
     public function getPriority()
     {
         return 5;
+    }
+
+    private function processTranslation(EloquentModel &$model, AbstractSchemaManager $schemaManager)
+    {
+        $translationTable = $this->checkIfHasTranslation($model, $schemaManager);
+        if (!empty($translationTable)) {
+            $this->getTranslatedAttributes($model, $translationTable);
+            $model->addUses(new UseClassModel("Dimsav\Translatable\Translatable"));
+            $model->addTrait(new UseTraitModel("Translatable"));
+        }
+    }
+
+    private function checkIfHasTranslation(EloquentModel $model, AbstractSchemaManager $schemaManager)
+    {
+        $translationTableName = Str::singular($model->getTableName()) . "_translations";
+        if ($schemaManager->tablesExist([$translationTableName]))
+            return $schemaManager->listTableDetails($translationTableName);
+    }
+
+    private function getTranslatedAttributes(EloquentModel &$model, Table $translationTable)
+    {
+        $columns = [];
+        $primaryColumnNames = $translationTable->getPrimaryKey() ? $translationTable->getPrimaryKey()->getColumns() : [];
+        $foreignKeys = ($translationTable->getForeignKeys());
+        if (count($foreignKeys)) {
+            foreach ($foreignKeys as $fk) {
+                $tableForeignColumns = $fk->getColumns();
+                foreach ($tableForeignColumns as $columnName)
+                    array_push($primaryColumnNames, $columnName);
+            }
+        }
+
+        array_push($primaryColumnNames, "locale");
+        foreach ($translationTable->getColumns() as $column) {
+            if (!in_array($column->getName(), $primaryColumnNames))
+                array_push($columns, $column->getName());
+        }
+        $fillableProperty = new PropertyModel('translatedAttributes');
+        $fillableProperty->setAccess('public')
+            ->setValue($columns)
+            ->setDocBlock(new DocBlockModel('@var array'));
+        $model->addProperty($fillableProperty);
     }
 }

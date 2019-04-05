@@ -111,9 +111,9 @@ class Config
     }
 
     public function checkIfFileAlreadyExistsOrCopyIt(EloquentModel $model, $directoryWhereSearchFor,
-                                                      $filenameToSearchFor,
-                                                      $directoryWhereGetFileToCopy,
-                                                      $filenameToCopy, $overwrite = false
+                                                     $filenameToSearchFor,
+                                                     $directoryWhereGetFileToCopy,
+                                                     $filenameToCopy, $overwrite = false
     )
     {
         if (!is_dir($directoryWhereSearchFor))
@@ -131,6 +131,7 @@ class Config
         $content = str_replace('$APP_NAME$', $this->getAppNamespace(), $content);
         $content = str_replace('$MODEL_NAME$', $model->getName()->getName(), $content);
         $content = str_replace('$CAMEL_MODEL_NAME$', Str::camel($model->getName()->getName()), $content);
+        $content = str_replace('$SNAKE_MODEL_NAME$', Str::snake($model->getName()->getName()), $content);
         $content = str_replace('$MODEL_FULL_CLASS$',
             $model->getNamespace()->getNamespace() . "\\" . $model->getName()->getName(),
             $content);
