@@ -69,7 +69,7 @@ class FieldProcessor implements ProcessorInterface
         foreach ($tableDetails->getColumns() as $column) {
             $columnName = $column->getName();
             $columnTypeName = $column->getType()->getName();
-            $column->getAutoincrement()
+            $column->getAutoincrement();
             $model->addProperty(new VirtualPropertyModel(
                 $columnName,
                 $this->typeRegistry->resolveType($columnTypeName),
@@ -212,7 +212,7 @@ class FieldProcessor implements ProcessorInterface
         $translationTable = $this->checkIfHasTranslation($model, $schemaManager);
         if (!empty($translationTable)) {
             $this->getTranslatedAttributes($model, $translationTable);
-            $model->addUses(new UseClassModel("Dimsav\Translatable\Translatable"));
+            $model->addUses(new UseClassModel("Astrotomic\Translatable\Translatable"));
             $model->addTrait(new UseTraitModel("Translatable"));
         }
     }

@@ -23,7 +23,7 @@
     "laravel/framework": "^6.0",
     "doctrine/dbal": "^2.5",
     "cwssrl/code-generator": "^1.0.4",
-	"dimsav/laravel-translatable": "9.*"
+	"astrotomic/laravel-translatable": "11.*"
   },
   "extra": {
     "laravel": {
