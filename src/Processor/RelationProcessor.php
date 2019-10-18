@@ -227,7 +227,7 @@ class RelationProcessor implements ProcessorInterface
         }
 
         if (in_array($name, $model->getMethodNames())) {
-            echo ("The method $name already exists, the name of new relation is _$name");
+            echo("The method $name already exists, the name of new relation is _$name" . PHP_EOL);
             $name = "_$name";
         }
         $method = new MethodModel($name);
