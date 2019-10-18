@@ -86,12 +86,27 @@ class BaseModel extends Model
         return null;
     }
 
+    public function deleteRelations()
+    {
+        if (isset($this->relationsToDelete) && is_array($this->relationsToDelete)) {
+            foreach ($this->relationsToDelete as $relationsToDelete) {
+                if ($this->$relationsToDelete()->count())
+                    $this->$relationsToDelete()->delete();
+            }
+        }
+        return null;
+    }
+
     public function delete()
     {
         $blockingRelations = $this->getBlockingRelations();
         if (!empty($blockingRelations))
             throw new \Exception(trans('exceptions.generic.delete_related_items'));
-        return parent::delete();
+        \DB::beginTransaction();
+        $this->deleteRelations();
+        $output = parent::delete();
+        \DB::commit();
+        return $output;
     }
 
     /**

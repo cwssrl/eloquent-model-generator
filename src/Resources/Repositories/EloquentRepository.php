@@ -7,6 +7,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Cws\EloquentModelGenerator\Misc;
 
 abstract class EloquentRepository implements RepositoryContract
 {
@@ -92,9 +93,16 @@ abstract class EloquentRepository implements RepositoryContract
         $allFieldsQuery = $order = $sort = $paginate = $trashed = $queries = $queryableFields = $queryType = null;
 
         //get the values from query string
-        $queries = $this->getQueryStringValues($request, $allFieldsQuery,
-            $order, $sort, $paginate,
-            $trashed, $queryableFields, $queryType);
+        $queries = $this->getQueryStringValues(
+            $request,
+            $allFieldsQuery,
+            $order,
+            $sort,
+            $paginate,
+            $trashed,
+            $queryableFields,
+            $queryType
+        );
         $queries = empty($queries) ? [] : $queries;
         //load query by field requested
         if ($request->has("id")) {
@@ -103,8 +111,7 @@ abstract class EloquentRepository implements RepositoryContract
         $query = $this->buildQueryByRequestFields($queryableFields, $queryType, $allFieldsQuery, $queries);
         if (!empty($relationToLoad))
             $query->with([$relationToLoad]);
-        return empty($paginate) ? $this->getAll($order, $sort, $query, $trashed) :
-            $this->getPaginated($paginate, $order, $sort, $query, $trashed);
+        return empty($paginate) ? $this->getAll($order, $sort, $query, $trashed) : $this->getPaginated($paginate, $order, $sort, $query, $trashed);
     }
 
     /**
@@ -120,25 +127,28 @@ abstract class EloquentRepository implements RepositoryContract
      * @param $queryType "or" or "and"
      * @return array|null queries for specific fields
      */
-    protected function getQueryStringValues(Request $request,
-                                            &$allFieldsQuery,
-                                            &$order,
-                                            &$sort,
-                                            &$paginate,
-                                            &$trashed,
-                                            &$queryableFields,
-                                            &$queryType)
-    {
+    protected function getQueryStringValues(
+        Request $request,
+        &$allFieldsQuery,
+        &$order,
+        &$sort,
+        &$paginate,
+        &$trashed,
+        &$queryableFields,
+        &$queryType
+    ) {
+        $translatedAttributes = isset($this->model->translatedAttributes) && !empty($this->model->translatedAttributes) ?
+            $this->model->translatedAttributes : [];
         $order = $request->has('order') ? $request['order'] : 'asc';
-        $sort = $request->has('sort') ? (key_exists($request["sort"], $this->model->getCasts()) ? $request['sort'] : "id") : 'id';
+        $sort = $request->has('sort') ? (in_array($request["sort"], array_merge($translatedAttributes, array_keys($this->model->getCasts()))) ?
+            $request['sort'] : "id") : 'id';
         $paginate = $request->has('paginate') ? $request['paginate'] : null;
         $trashed = $request->has('trashed') ? !empty($request['trashed']) : false;
         $queryType = $request->has('query_type') ? $request['query_type'] : "and";
         $allFieldsQuery = null;
         //get all queryable fields in model merging fillable and translatedAttributes
         $queryableFields = (isset($this->model->translatedAttributes) && !empty($this->model->translatedAttributes)) ?
-            array_merge($this->model->translatedAttributes, $this->model->getFillable()) :
-            $this->model->getFillable();
+            array_merge($this->model->translatedAttributes, $this->model->getFillable()) : $this->model->getFillable();
         if ($this->model->timestamps)
             $queryableFields = array_merge($queryableFields, ['created_at', 'updated_at']);
         // check if we need to make a query for all fields
@@ -161,7 +171,6 @@ abstract class EloquentRepository implements RepositoryContract
 
             return $queries;
         }
-
     }
 
     /**
@@ -211,7 +220,7 @@ abstract class EloquentRepository implements RepositoryContract
         $isValueValidDatetime = self::isValidDate($allFieldQueries);
         $booleanValue = filter_var($allFieldQueries, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
         $numericValue = filter_var($allFieldQueries, FILTER_VALIDATE_FLOAT, FILTER_NULL_ON_FAILURE);
-        $isValidTimestamp = (is_numeric($allFieldQueries) && (int)$allFieldQueries == $allFieldQueries);
+        $isValidTimestamp = (is_numeric($allFieldQueries) && (int) $allFieldQueries == $allFieldQueries);
         $stringValue = trim($allFieldQueries);
         $stringValue = "%" . trim($stringValue, "%") . "%";
         //get model translated attributes
@@ -221,9 +230,21 @@ abstract class EloquentRepository implements RepositoryContract
         $likeOperator = (config('database.default') === 'pgsql' ? "ilike" : "like");
         //normalize the query value for each fields based on its type
         foreach ($queryableFields as $currentField) {
-            $this->buildQueryClauseForField($casts, $translatedAttributes, $currentField, $likeOperator,
-                $allFieldQueries, false, $booleanValue, $numericValue, $isValidTimestamp,
-                $isValueValidDatetime, $stringValue, true, $query);
+            $this->buildQueryClauseForField(
+                $casts,
+                $translatedAttributes,
+                $currentField,
+                $likeOperator,
+                $allFieldQueries,
+                false,
+                $booleanValue,
+                $numericValue,
+                $isValidTimestamp,
+                $isValueValidDatetime,
+                $stringValue,
+                true,
+                $query
+            );
         }
         return $query;
     }
@@ -235,23 +256,42 @@ abstract class EloquentRepository implements RepositoryContract
      * @param string $format
      * @return bool
      */
-    private static function isValidDate(string $date = null, string $format = "d/m/Y H:i:s")
+    public static function isValidDate(string $date = null, string $format = null)
     {
+        if (is_null($date))
+            return false;
+        $format = empty($format) ? ["Y-m-d\TH:i:s.u\Z", "Y-m-d H:i:s", "Y-m-d H:i:sZ", "Y-m-d\TH:i:sZ", "Y-m-d\TH:i:s"] : $format;
         try {
-            if (empty($date))
-                return null;
-            Carbon::createFromFormat($format, $date);
+            if (is_array($format)) {
+                foreach ($format as $item) {
+                    Carbon::createFromFormat($item, $date);
+                    return true;
+                }
+            } else {
+                Carbon::createFromFormat($format, $date);
+            }
             return true;
         } catch (\Exception $e) {
             return false;
         }
     }
 
-    private function buildQueryClauseForField($casts, $translatedAttributes, $currentField,
-                                              $likeOperator, $value, $isNullValue, $booleanValue, $numericValue,
-                                              $isValidTimestamp, $isValueValidDatetime, $ilikeValue, $isOrQuery, &$query,
-                                              $isNotQuery = false)
-    {
+    private function buildQueryClauseForField(
+        $casts,
+        $translatedAttributes,
+        $currentField,
+        $likeOperator,
+        $value,
+        $isNullValue,
+        $booleanValue,
+        $numericValue,
+        $isValidTimestamp,
+        $isValueValidDatetime,
+        $ilikeValue,
+        $isOrQuery,
+        &$query,
+        $isNotQuery = false
+    ) {
         $cast = null;
         if (isset($casts[$currentField])) {
             $cast = $casts[$currentField];
@@ -279,38 +319,32 @@ abstract class EloquentRepository implements RepositoryContract
                 case "integer":
                     if ($numericValue !== null)
                         $query = $isOrQuery ?
-                            $query->orWhere($currentField, $otherCastsOperator, intval($numericValue)) :
-                            $query->where($currentField, $otherCastsOperator, intval($numericValue));
+                            $query->orWhere($currentField, $otherCastsOperator, intval($numericValue)) : $query->where($currentField, $otherCastsOperator, intval($numericValue));
                     break;
                 case "datetime":
                     if ($isValueValidDatetime)
                         $query = $isOrQuery ?
-                            $query->orWhere($currentField, $otherCastsOperator, $value) :
-                            $query->where($currentField, $otherCastsOperator, $value);
+                            $query->orWhere($currentField, $otherCastsOperator, $value) : $query->where($currentField, $otherCastsOperator, $value);
                     break;
                 case "float":
                     if ($numericValue !== null)
                         $query = $isOrQuery ?
-                            $query->orWhere($currentField, $otherCastsOperator, $numericValue) :
-                            $query->where($currentField, $otherCastsOperator, $numericValue);
+                            $query->orWhere($currentField, $otherCastsOperator, $numericValue) : $query->where($currentField, $otherCastsOperator, $numericValue);
                     break;
                 case "real":
                     if ($numericValue !== null)
                         $query = $isOrQuery ?
-                            $query->orWhere($currentField, $otherCastsOperator, $numericValue) :
-                            $query->where($currentField, $otherCastsOperator, $numericValue);
+                            $query->orWhere($currentField, $otherCastsOperator, $numericValue) : $query->where($currentField, $otherCastsOperator, $numericValue);
                     break;
                 case "double":
                     if ($numericValue !== null)
                         $query = $isOrQuery ?
-                            $query->orWhere($currentField, $otherCastsOperator, $numericValue) :
-                            $query->where($currentField, $otherCastsOperator, $numericValue);
+                            $query->orWhere($currentField, $otherCastsOperator, $numericValue) : $query->where($currentField, $otherCastsOperator, $numericValue);
                     break;
                 case "date":
                     if ($isValueValidDatetime)
                         $query = $isOrQuery ?
-                            $query->orWhere($currentField, $otherCastsOperator, $numericValue) :
-                            $query->where($currentField, $otherCastsOperator, $numericValue);
+                            $query->orWhere($currentField, $otherCastsOperator, $value) : $query->where($currentField, $otherCastsOperator, $value);
                     break;
                 case "boolean":
                     if ($booleanValue !== null)
@@ -319,8 +353,7 @@ abstract class EloquentRepository implements RepositoryContract
                 case "timestamp":
                     if ($isValidTimestamp)
                         $query = $isOrQuery ?
-                            $query->orWhere($currentField, $otherCastsOperator, $numericValue) :
-                            $query->where($currentField, $otherCastsOperator, $numericValue);
+                            $query->orWhere($currentField, $otherCastsOperator, $numericValue) : $query->where($currentField, $otherCastsOperator, $numericValue);
                     break;
                 case "array":
                     $value = explode(",", $value);
@@ -334,7 +367,8 @@ abstract class EloquentRepository implements RepositoryContract
                                     . "'";
                                 $q = $q->whereRaw($queryToUseInArray . " " . $likeOperator . $current);
                             }
-                        }) : $query->Where(function ($q) use ($currentField, $value, $queryToUseInArray, $likeOperator) {
+                        }
+                    ) : $query->Where(function ($q) use ($currentField, $value, $queryToUseInArray, $likeOperator) {
 
                         foreach ($value as $current) {
                             $current = " '"
@@ -347,39 +381,26 @@ abstract class EloquentRepository implements RepositoryContract
                     break;
                 default:
                     $query = $isOrQuery ?
-                        $query->orWhere($currentField, $likeOperator, $ilikeValue) :
-                        $query->where($currentField, $likeOperator, $ilikeValue);
+                        $query->orWhere($currentField, $likeOperator, $ilikeValue) : $query->where($currentField, $likeOperator, $ilikeValue);
                     break;
             }
         } elseif (in_array($currentField, $translatedAttributes))
             $query = $isOrQuery ?
-                $this->orWhereTranslationLike($query, $currentField, $ilikeValue, null, $likeOperator) :
-                $this->whereTranslationLike($query, $currentField, $ilikeValue);
+                $this->orWhereTranslationLike($query, $currentField, $ilikeValue, null, $likeOperator) : $this->whereTranslationLike($query, $currentField, $ilikeValue);
     }
 
     private function getQueryForArrayField($explodedFieldName)
     {
-        /* $originalExplodedFieldName = $explodedFieldName;
-         $lastField = array_pop($explodedFieldName);
-         $name = implode("->'", $explodedFieldName);
-         $originalLength = count($originalExplodedFieldName);
-         if ($originalLength > 1) {
-             $name .= $originalLength > 2 ? "'" : "";
-             $name .= " #>> '{{$lastField}}' ";
-         } else {
-             $name .= "{$lastField} #>> '{}' ";
-         }
-         return $name;*/
-
-        $originalExplodedFieldName = $explodedFieldName;
-        $originalLength = count($originalExplodedFieldName);
-        if ($originalLength > 1) {
-            $firstName = array_shift($explodedFieldName);
-            $lastField = implode(",", $explodedFieldName);
-            $name = $firstName . " #>> '{{$lastField}}' ";
+        $lastField = array_pop($explodedFieldName);
+        $firstField = array_shift($explodedFieldName);
+        $name = implode("'->'", $explodedFieldName);
+        if (count($explodedFieldName) > 1) {
+            $name = $firstField . "->'" . $name . "'";
         } else {
-            $name = "{$explodedFieldName[0]} #>> '{}' ";
+            $name = $firstField;
         }
+        $name .= " #>> '{{$lastField}}'";
+        //dd($name);
         return $name;
     }
 
@@ -429,7 +450,8 @@ abstract class EloquentRepository implements RepositoryContract
         foreach ($queries as $field => $value) {
 
             $parameters = $this->getQueryParameters($field, $value, $isOrQuery, $casts);
-            $this->buildQueryClauseForField($casts,
+            $this->buildQueryClauseForField(
+                $casts,
                 $translatedAttributes,
                 $parameters["field_name"],
                 $parameters["operator"],
@@ -448,12 +470,12 @@ abstract class EloquentRepository implements RepositoryContract
         return $query;
     }
 
-    private function getQueryParameters($inputField,
-                                        $inputValue,
-                                        $globalIsOrQuery,
-                                        $casts
-    )
-    {
+    private function getQueryParameters(
+        $inputField,
+        $inputValue,
+        $globalIsOrQuery,
+        $casts
+    ) {
         $output = [];
         //a json field name could be multilevel, so we have to split it by "-"
         $fieldNameOnDb = explode("-", $inputField)[0];
@@ -466,29 +488,27 @@ abstract class EloquentRepository implements RepositoryContract
         if (count($explodedFieldName) > 1) {
             $output["field_name"] = $explodedFieldName[1];
             $output["is_or_query"] = (strtolower($explodedFieldName[0]) === "or");
-        }
-        else
-        {
+        } else {
             $output["field_name"] = $explodedFieldName[0];
+            $output["is_or_query"] = false;
         }
 
-        $isLikeQuery = starts_with($inputValue, "??");
-        $isNotQuery = starts_with($inputValue, "!!");
-        if ($isLikeQuery || $isNotQuery) {
+        $startsWithLike = Misc::startsWith($inputValue, "??");
+        $isLikeQuery = $startsWithLike ? true : !Misc::startsWith($inputValue, "!!");
+        $isNotQuery = Misc::startsWith($inputValue, "!!");
+        if ($startsWithLike || $isNotQuery) {
             $inputValue = substr($inputValue, 2);
         }
         $output["is_not_query"] = $isNotQuery;
 
         $output["value"] = $inputValue;
         //get the operator to use in query based on its type
-        $output["operator"] = $isNotQuery ? "<>" : (($isLikeQuery && isset($casts[$fieldNameOnDb]) &&
-            ($casts[$fieldNameOnDb] === 'string' || $casts[$fieldNameOnDb] === 'array')) ?
-            (config('database.default') === 'pgsql' ? "ilike" : "like") : "=");
+        $output["operator"] = $isNotQuery ? "<>" : (($isLikeQuery && isset($casts[$fieldNameOnDb]) && ($casts[$fieldNameOnDb] === 'string' || $casts[$fieldNameOnDb] === 'array')) ? (config('database.default') === 'pgsql' ? "ilike" : "like") : "=");
         $output["is_null_value"] = ($inputValue === "null");
         $output["is_value_valid_datetime"] = self::isValidDate($inputValue);
         $output["boolean_value"] = filter_var($inputValue, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
         $output["numeric_value"] = filter_var($inputValue, FILTER_VALIDATE_FLOAT, FILTER_NULL_ON_FAILURE);
-        $output["is_valid_timestamp"] = (is_numeric($inputValue) && (int)$inputValue == $inputValue);
+        $output["is_valid_timestamp"] = (is_numeric($inputValue) && (int) $inputValue == $inputValue);
         $stringValue = trim($inputValue);
         $output["string_value"] = $isLikeQuery ? ("%" . trim($stringValue, "%") . "%") : $stringValue;
         return $output;
@@ -520,7 +540,19 @@ abstract class EloquentRepository implements RepositoryContract
         $modelShortName = (new \ReflectionClass($this->model))->getShortName();
         $transTableName = $this->getTableNameByModelName($modelShortName . "Translation");
         $tableName = $this->getTableNameByModelName($modelShortName);
-        return $query->join($transTableName, $transTableName . "." . str_singular($tableName) . "_id", "=", $tableName . ".id");
+        $selectCurrentTable = array_keys($this->model->getCasts());
+        $selectCurrentTable = array_map(function ($a) use ($tableName) {
+            return $tableName . "." . $a;
+        }, $selectCurrentTable);
+        $translatedSelect = $this->model->translatedAttributes;
+        $translatedSelect = array_map(function ($a) use ($transTableName) {
+            return $transTableName . "." . $a;
+        }, $translatedSelect);
+
+        return $query
+            ->join($transTableName, $transTableName . "." . str_singular($tableName) . "_id", "=", $tableName . ".id")
+            ->select(array_merge($selectCurrentTable, $translatedSelect))
+            ->where($transTableName . ".locale", \App::getLocale());
     }
 
     /**
@@ -695,8 +727,7 @@ abstract class EloquentRepository implements RepositoryContract
                         } else {
                             $inputArray[$lang] = [$fieldName => $translatedValue];
                         }
-                    }
-                else {
+                    } else {
                     $defLocale = config('translatable.locale');
                     if (isset($inputArray[$defLocale])) {
                         $inputArray[$defLocale] = array_merge($inputArray[$defLocale], [$fieldName => $translations]);

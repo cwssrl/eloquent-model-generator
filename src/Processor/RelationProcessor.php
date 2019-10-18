@@ -21,6 +21,7 @@ use Cws\EloquentModelGenerator\Model\EloquentModel;
 use Cws\EloquentModelGenerator\Model\HasMany;
 use Cws\EloquentModelGenerator\Model\HasOne;
 use Cws\EloquentModelGenerator\Model\Relation;
+use Cws\EloquentModelGenerator\Misc;
 
 /**
  * Class RelationProcessor
@@ -54,7 +55,7 @@ class RelationProcessor implements ProcessorInterface
      */
     public function process(EloquentModel $model, Config $config)
     {
-        if (!ends_with($model->getTableName(), "_translations")) {
+        if (!Misc::endsWith($model->getTableName(), "_translations")) {
 
             $schemaManager = $this->databaseManager->connection($config->get('connection'))->getDoctrineSchemaManager();
             $prefix = $this->databaseManager->connection($config->get('connection'))->getTablePrefix();
@@ -96,8 +97,10 @@ class RelationProcessor implements ProcessorInterface
                             $key = array_search($name, $keys) === 0 ? 1 : 0;
                             $secondForeignKey = $foreignKeys[$keys[$key]];
                             $secondForeignTable = $this->removePrefix($prefix, $secondForeignKey->getForeignTableName());
-                            $pivots = array_diff(array_keys($table->getColumns()),
-                                ['created_at', 'updated_at', $secondForeignKey->getLocalColumns()[0], $localColumns[0]]);
+                            $pivots = array_diff(
+                                array_keys($table->getColumns()),
+                                ['created_at', 'updated_at', $secondForeignKey->getLocalColumns()[0], $localColumns[0]]
+                            );
                             $relation = new BelongsToMany(
                                 $secondForeignTable,
                                 $this->removePrefix($prefix, $table->getName()),
@@ -202,11 +205,12 @@ class RelationProcessor implements ProcessorInterface
         } elseif ($relation instanceof BelongsTo) {
             $relationKey = $this->resolveArgument(
                 $relation->getForeignColumnName(),
-                $this->helper->getDefaultForeignColumnName($relation->getTableName()));
+                $this->helper->getDefaultForeignColumnName($relation->getTableName())
+            );
             if (empty($relationKey))
                 $name = Str::singular(Str::camel($relation->getTableName()));
             else {
-                if (ends_with($relationKey, "_id"))
+                if (Misc::endsWith($relationKey, "_id"))
                     $relationKey = substr($relationKey, 0, -3);
                 $name = Str::singular(Str::camel($relationKey));
             }
@@ -222,6 +226,10 @@ class RelationProcessor implements ProcessorInterface
             throw new GeneratorException('Relation not supported');
         }
 
+        if (in_array($name, $model->getMethodNames())) {
+            echo ("The method $name already exists, the name of new relation is _$name");
+            $name = "_$name";
+        }
         $method = new MethodModel($name);
 
         $method->setBody($this->createMethodBody($model, $relation));
@@ -241,7 +249,7 @@ class RelationProcessor implements ProcessorInterface
             else
                 return ("HasMany" . $name);
         $foreignColumnName = Str::singular($relation->getTableName()) .
-            Str::plural(Str::ucfirst((ends_with($foreignColumnName, "_id") ? substr($foreignColumnName, 0, -3) : $foreignColumnName)));
+            Str::plural(Str::ucfirst((Misc::endsWith($foreignColumnName, "_id") ? substr($foreignColumnName, 0, -3) : $foreignColumnName)));
         return Str::plural(Str::camel($foreignColumnName));
     }
 
@@ -300,11 +308,13 @@ class RelationProcessor implements ProcessorInterface
             );
         }
 
-        return sprintf('return $this->%s(%s)%s%s;', $name,
+        return sprintf(
+            'return $this->%s(%s)%s%s;',
+            $name,
             $this->prepareArguments($arguments),
             $timestamps ? "->withTimestamps()" : "",
-            empty($pivots) ? "" : ("->withPivot(" . $pivots . ")"));
-
+            empty($pivots) ? "" : ("->withPivot(" . $pivots . ")")
+        );
     }
 
     /**

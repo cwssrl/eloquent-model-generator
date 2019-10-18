@@ -7,7 +7,7 @@ use $APP_NAME$Http\Requests\Update$MODEL_NAME$Request;
 use $APP_NAME$Http\Resources\$MODEL_NAME$Resource;
 use $APP_NAME$Http\Resources\$MODEL_NAME$CollectionResource;
 use $MODEL_FULL_CLASS$;
-use $APP_NAME$Repositories\$MODEL_NAME$\Eloquent$MODEL_NAME$Repository;
+use $APP_NAME$Repositories\$MODEL_NAME$\$MODEL_NAME$Contract;
 use Illuminate\Http\Request;
 use Response;
 
@@ -16,14 +16,46 @@ use Response;
  */
 class $MODEL_NAME$APIController extends ApiBaseController
 {
-    /** @var  Eloquent$MODEL_NAME$Repository */
+    /** @var  $MODEL_NAME$Contract */
     private $$CAMEL_MODEL_NAME$Repository;
 
-    public function __construct(Eloquent$MODEL_NAME$Repository $$CAMEL_MODEL_NAME$Repository)
+    public function __construct($MODEL_NAME$Contract $$CAMEL_MODEL_NAME$Repository)
     {
         $this->$CAMEL_MODEL_NAME$Repository = $$CAMEL_MODEL_NAME$Repository;
     }
 
+    /**
+    *
+    * @OA\Get(
+    *     path="/$SNAKE_MODEL_NAME$s",
+    *     operationId="get$MODEL_NAME$s",
+    *     tags={"$MODEL_NAME$s"},
+    *     summary="Get all $MODEL_NAME$s",
+    *     description="Return all $MODEL_NAME$s",
+    *     security={
+    *       {"basicAuth": {}}
+    *     },
+    *     @OA\Parameter(
+    *         name="criteria",
+    *         in="query",
+    *         description="Some optional other parameter",
+    *         required=false,
+    *         @OA\Schema(type="string")
+    *     ),
+    *     @OA\Response(
+    *         response=200,
+    *         description="successful operation",
+    *         @OA\Schema(
+    *             type="array",
+    *             @OA\Items(ref="#/components/schemas/$MODEL_NAME$")
+    *         ),
+    *     ),
+    *     @OA\Response(
+    *         response="400",
+    *         description="Error: Bad request. When required parameters were not supplied.",
+    *     ),
+    * )
+    */
     public function index(Request $request)
     {
         $$CAMEL_MODEL_NAME$s = $this->$CAMEL_MODEL_NAME$Repository->getByRequest($request);
@@ -31,6 +63,47 @@ class $MODEL_NAME$APIController extends ApiBaseController
     }
 
 
+    /**
+    * @OA\Post(
+    *     path="/$SNAKE_MODEL_NAME$s",
+    *     operationId="add$MODEL_NAME$",
+    *     tags={"$MODEL_NAME$s"},
+    *     security={
+    *       {"basicAuth": {}}
+    *     },
+    *     summary="Add a new $CAMEL_MODEL_NAME$",
+    *     description="",
+    *     @OA\RequestBody(
+    *         description="$MODEL_NAME$ object that needs to be added to the store",
+    *         required=true,
+    *         @OA\JsonContent(ref="#/components/schemas/$MODEL_NAME$"),
+    *         @OA\MediaType(
+    *             mediaType="application/xml",
+    *             @OA\Schema(ref="#/components/schemas/$MODEL_NAME$")
+    *         ),
+    *     ),
+    *     @OA\RequestBody(
+    *         description="$MODEL_NAME$ object that needs to be added to the store",
+    *         required=true,
+    *         @OA\MediaType(
+    *             mediaType="application/xml",
+    *             @OA\Schema(ref="#/components/schemas/$MODEL_NAME$")
+    *         )
+    *     ),
+    *     @OA\Response(
+    *         response=405,
+    *         description="Invalid $CAMEL_MODEL_NAME$",
+    *     ),
+    *     @OA\Response(
+    *         response=200,
+    *         description="successful operation",
+    *         @OA\Schema(
+    *             type="array",
+    *             @OA\Items(ref="#/components/schemas/$MODEL_NAME$")
+    *         ),
+    *     ),
+    * )
+    */
     public function store(Create$MODEL_NAME$Request $request)
     {
         $input = $request->all();
@@ -40,7 +113,41 @@ class $MODEL_NAME$APIController extends ApiBaseController
         return $this->sendResponse(new $MODEL_NAME$Resource($$CAMEL_MODEL_NAME$));
     }
 
-
+    /**
+    * @OA\Get(
+    *     path="/$SNAKE_MODEL_NAME$s/{id}",
+    *     operationId="get$MODEL_NAME$",
+    *     tags={"$MODEL_NAME$s"},
+    *     summary="Find $MODEL_NAME$ by ID",
+    *     description="Returns a single $MODEL_NAME$",
+    *     security={
+    *       {"basicAuth": {}}
+    *     },
+    *     @OA\Parameter(
+    *         description="ID of $MODEL_NAME$ to return",
+    *         in="path",
+    *         name="item",
+    *         required=true,
+    *         @OA\Schema(
+    *           type="integer",
+    *           format="int64"
+    *         )
+    *     ),
+    *     @OA\Response(
+    *         response=200,
+    *         description="successful operation",
+    *         @OA\JsonContent(ref="#/components/schemas/$MODEL_NAME$")
+    *     ),
+    *     @OA\Response(
+    *         response="400",
+    *         description="Invalid ID supplied"
+    *     ),
+    *     @OA\Response(
+    *         response="404",
+    *         description="Item not found"
+    *     )
+    * )
+    */
     public function show($id)
     {
         /** @var $MODEL_NAME$ $$CAMEL_MODEL_NAME$ */
@@ -53,7 +160,54 @@ class $MODEL_NAME$APIController extends ApiBaseController
         return $this->sendResponse(new $MODEL_NAME$Resource($$CAMEL_MODEL_NAME$));
     }
 
-
+    /**
+    * @OA\Put(
+    *     path="/$SNAKE_MODEL_NAME$s/{id}",
+    *     operationId="update$MODEL_NAME$",
+    *     tags={"$MODEL_NAME$s"},
+    *     summary="Update an existing $MODEL_NAME$",
+    *     description="",
+    *     security={
+    *       {"basicAuth": {}}
+    *     },
+    *     @OA\Parameter(
+    *         description="$MODEL_NAME$ id to update",
+    *         in="path",
+    *         name="item",
+    *         required=true,
+    *         @OA\Schema(
+    *             type="integer",
+    *             format="int64"
+    *         )
+    *     ),
+    *     @OA\RequestBody(
+    *         description="$MODEL_NAME$ object that needs to be updated into the store",
+    *         required=true,
+    *         @OA\JsonContent(ref="#/components/schemas/$MODEL_NAME$"),
+    *         @OA\MediaType(
+    *            mediaType="application/xml",
+    *            @OA\Schema(ref="#/components/schemas/$MODEL_NAME$")
+    *         )
+    *     ),
+    *     @OA\Response(
+    *         response=200,
+    *         description="successful operation",
+    *         @OA\JsonContent(ref="#/components/schemas/$MODEL_NAME$")
+    *     ),
+    *     @OA\Response(
+    *         response=400,
+    *         description="Invalid ID supplied"
+    *     ),
+    *     @OA\Response(
+    *         response=404,
+    *         description="Item not found"
+    *     ),
+    *     @OA\Response(
+    *         response=405,
+    *         description="Invalid $MODEL_NAME$",
+    *     )
+    * )
+    */
     public function update($id, Update$MODEL_NAME$Request $request)
     {
         $input = $request->all();
@@ -67,10 +221,43 @@ class $MODEL_NAME$APIController extends ApiBaseController
 
         $$CAMEL_MODEL_NAME$ = $this->$CAMEL_MODEL_NAME$Repository->update($input, $id);
 
-        return $this->sendResponse($$CAMEL_MODEL_NAME$->toArray());
+        return $this->sendResponse(new $MODEL_NAME$Resource($$CAMEL_MODEL_NAME$));
     }
 
-
+    /**
+    * @OA\Delete(
+    *     path="/$SNAKE_MODEL_NAME$s/{id}",
+    *     operationId="delete$MODEL_NAME$",
+    *     tags={"$MODEL_NAME$s"},
+    *     summary="Deletes an $MODEL_NAME$",
+    *     description="",
+    *     security={
+    *       {"basicAuth": {}}
+    *     },
+    *     @OA\Parameter(
+    *         description="$MODEL_NAME$ id to delete",
+    *         in="path",
+    *         name="item",
+    *         required=true,
+    *         @OA\Schema(
+    *             type="integer",
+    *             format="int64"
+    *         )
+    *     ),
+    *     @OA\Response(
+    *         response=204,
+    *         description="successful operation"
+    *     ),
+    *     @OA\Response(
+    *         response=400,
+    *         description="Invalid ID supplied"
+    *     ),
+    *     @OA\Response(
+    *         response=404,
+    *         description="$MODEL_NAME$ not found"
+    *     )
+    * )
+    */
     public function destroy($id)
     {
         /** @var $MODEL_NAME$ $$CAMEL_MODEL_NAME$ */
@@ -84,5 +271,4 @@ class $MODEL_NAME$APIController extends ApiBaseController
 
         return $this->sendResponse(["id" => $id]);
     }
-
 }

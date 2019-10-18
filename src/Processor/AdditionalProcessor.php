@@ -9,6 +9,7 @@ use Cws\CodeGenerator\Model\NamespaceModel;
 use Cws\CodeGenerator\Model\UseClassModel;
 use Cws\EloquentModelGenerator\Config;
 use Cws\EloquentModelGenerator\Model\EloquentModel;
+use Cws\EloquentModelGenerator\Misc;
 
 /**
  * Class NamespaceProcessor
@@ -21,7 +22,7 @@ class AdditionalProcessor implements ProcessorInterface
      */
     public function process(EloquentModel $model, Config $config)
     {
-        if (!ends_with($model->getTableName(), "_translations")) {
+        if (!Misc::endsWith($model->getTableName(), "_translations")) {
             $this->createRoutesForModelIfNeeded($config, $model);
             $this->createRoutesForModelIfNeeded($config, $model, true);
             $this->createApiResourceForModelIfNeeded($config, $model);
@@ -46,8 +47,7 @@ class AdditionalProcessor implements ProcessorInterface
             //build the route line that we need to add to routes file looking for the controller path
             $resType = $isApi ? "Route::apiResource(\"" : "Route::resource(\"";
             $command = $resType .
-                $model->getTableName() . "\", '" .
-                (empty($controllerPath) ? "" : ($controllerPath . "\\"))
+                $model->getTableName() . "\", '" . (empty($controllerPath) ? "" : ($controllerPath . "\\"))
                 . $model->getName()->getName() . ($isApi ? "API" : "") . "Controller');";
             $path = $isApi ? $config->get("api_routes_path") : $config->get("routes_path");
             //get the route file content and check if our line does not already exist
@@ -67,18 +67,30 @@ class AdditionalProcessor implements ProcessorInterface
      */
     private function createApiResourceForModelIfNeeded(Config $config, EloquentModel $model)
     {
-        if ($config->get("resource") !== false) {
+        if ($config->get("api_resource") !== false) {
             //invoke the artisan command to create controller
-            $config->checkIfFileAlreadyExistsOrCopyIt($model, app_path("Http/Resources"),
+            $config->checkIfFileAlreadyExistsOrCopyIt(
+                $model,
+                app_path("Http/Resources"),
                 $model->getName()->getName() . "Resource.php",
-                __DIR__ . '/../Resources/Resources', "Resource.stub");
+                __DIR__ . '/../Resources/Resources',
+                "Resource.stub"
+            );
 
-            $config->checkIfFileAlreadyExistsOrCopyIt($model, app_path("Http/Resources"),
+            $config->checkIfFileAlreadyExistsOrCopyIt(
+                $model,
+                app_path("Http/Resources"),
                 "RestResourceCollection.php",
-                __DIR__ . '/../Resources/Api', "RestResourceCollection.php.stub");
-            $config->checkIfFileAlreadyExistsOrCopyIt($model, app_path("Http/Resources"),
+                __DIR__ . '/../Resources/Api',
+                "RestResourceCollection.php.stub"
+            );
+            $config->checkIfFileAlreadyExistsOrCopyIt(
+                $model,
+                app_path("Http/Resources"),
                 $model->getName()->getName() . "CollectionResource.php",
-                __DIR__ . '/../Resources/Resources', "ResourceCollection.stub");
+                __DIR__ . '/../Resources/Resources',
+                "ResourceCollection.stub"
+            );
 
             $collectionContent = file_get_contents(app_path("Http/Resources/" . $model->getName()->getName() . "CollectionResource.php"));
             $collectionContent = str_replace("use Illuminate\Http\Resources\Json\ResourceCollection;", "", $collectionContent);
@@ -95,34 +107,58 @@ class AdditionalProcessor implements ProcessorInterface
      */
     private function createApiControllerForModelIfNeeded(Config $config, EloquentModel $model)
     {
-        if ($config->get("api-controller") !== false) {
-            $config->checkIfFileAlreadyExistsOrCopyIt($model, app_path("Http/Controllers"),
+        if ($config->get("api_controller") !== false) {
+            $config->checkIfFileAlreadyExistsOrCopyIt(
+                $model,
+                app_path("Http/Controllers"),
                 "Controller.php",
-                __DIR__ . '/../Resources/Controllers', "BaseController.stub");
+                __DIR__ . '/../Resources/Controllers',
+                "BaseController.stub"
+            );
 
             $apiControllersFolder = app_path("Http/Controllers/API");
             if (!is_dir($apiControllersFolder))
                 mkdir($apiControllersFolder);
-            $config->checkIfFileAlreadyExistsOrCopyIt($model, app_path("Http/Controllers/API"),
+            $config->checkIfFileAlreadyExistsOrCopyIt(
+                $model,
+                app_path("Http/Controllers/API"),
                 "APIBaseController.php",
-                __DIR__ . '/../Resources/Controllers', "ApiBaseController.stub");
-            $config->checkIfFileAlreadyExistsOrCopyIt($model, app_path("Http/Controllers/API"),
+                __DIR__ . '/../Resources/Controllers',
+                "ApiBaseController.stub"
+            );
+            $config->checkIfFileAlreadyExistsOrCopyIt(
+                $model,
+                app_path("Http/Controllers/API"),
                 $model->getName()->getName() . "APIController.php",
-                __DIR__ . '/../Resources/Controllers', "ApiModelController.stub");
+                __DIR__ . '/../Resources/Controllers',
+                "ApiModelController.stub"
+            );
             $traitsFolder = app_path("Traits");
             if (!is_dir($traitsFolder))
                 mkdir($traitsFolder);
 
-            $config->checkIfFileAlreadyExistsOrCopyIt($model, $traitsFolder,
+            $config->checkIfFileAlreadyExistsOrCopyIt(
+                $model,
+                $traitsFolder,
                 "RestExceptionHandlerTrait.php",
-                __DIR__ . '/../Resources/Traits', "RestExceptionHandlerTrait.php.stub");
-            $config->checkIfFileAlreadyExistsOrCopyIt($model, $traitsFolder,
+                __DIR__ . '/../Resources/Traits',
+                "RestExceptionHandlerTrait.php.stub"
+            );
+            $config->checkIfFileAlreadyExistsOrCopyIt(
+                $model,
+                $traitsFolder,
                 "RestTrait.php",
-                __DIR__ . '/../Resources/Traits', "RestTrait.php.stub");
-            $config->checkIfFileAlreadyExistsOrCopyIt($model, app_path("Exceptions"),
+                __DIR__ . '/../Resources/Traits',
+                "RestTrait.php.stub"
+            );
+            $config->checkIfFileAlreadyExistsOrCopyIt(
+                $model,
+                app_path("Exceptions"),
                 "Handler.php",
-                __DIR__ . '/../Resources/Traits', "Handler.php.stub", true);
-
+                __DIR__ . '/../Resources/Traits',
+                "Handler.php.stub",
+                true
+            );
         }
     }
 
