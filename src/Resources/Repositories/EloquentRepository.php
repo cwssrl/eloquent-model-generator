@@ -302,7 +302,7 @@ abstract class EloquentRepository implements RepositoryContract
                 $cast = isset($casts[$temp]) ? $casts[$temp] : null;
                 if (empty($cast)) {
                     $splittedField = explode("-", $currentField);
-                    $temp = array_first($splittedField);
+                    $temp = reset($splittedField);
                     $cast = isset($casts[$temp]) ? $casts[$temp] : null;
                 }
             }

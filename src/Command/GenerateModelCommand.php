@@ -11,6 +11,7 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
+use Cws\EloquentModelGenerator\Misc;
 
 /**
  * Class GenerateModelCommand
@@ -77,16 +78,23 @@ class GenerateModelCommand extends Command
                 $isAnotherSchemaTableName = count(explode('.', $name)) > 1;
                 if (!$isAnotherSchemaTableName && !in_array(strtolower($name), $exceptTables) && !$this->isTableNameARelationTableName($name, $names)) {
                     dump($name . " " . $this->getDefaultClassName($name));
+                    $this->checkIfTableIsATranslationOneAndIfTranslatableIsInstalled($name);
                     $config->set("class_name", $this->getDefaultClassName($name));
                     $config->set("table_name", $name);
                     $model = $this->generator->generateModel($config, null, "output_path", null, true);
                     $this->output->writeln(sprintf('Model %s generated', $model->getName()->getName()));
-
                 }
             }
         } else {
             $model = $this->generator->generateModel($config, null, "output_path", null, true);
             $this->output->writeln(sprintf('Model %s generated', $model->getName()->getName()));
+        }
+    }
+
+    private function checkIfTableIsATranslationOneAndIfTranslatableIsInstalled($tableName)
+    {
+        if (Misc::endsWith($tableName, "_translations") && !class_exists("Astrotomic\Translatable\Locales", true)) {
+            $this->warn("Be careful, to manage translation tables you need to require Astrotomic/laravel-translatable");
         }
     }
 
