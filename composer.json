@@ -20,7 +20,7 @@
         }
     },
     "require": {
-        "laravel/framework": "^6.0",
+        "laravel/framework": "^6.20.12",
         "doctrine/dbal": "^2.5",
         "cwssrl/code-generator": "^1.0.4"
     },
