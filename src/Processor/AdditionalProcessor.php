@@ -47,13 +47,13 @@ class AdditionalProcessor implements ProcessorInterface
             //build the route line that we need to add to routes file looking for the controller path
             $resType = $isApi ? "Route::apiResource(\"" : "Route::resource(\"";
             $command = $resType .
-                $model->getTableName() . "\", '" . (empty($controllerPath) ? "" : ($controllerPath . "\\"))
-                . $model->getName()->getName() . ($isApi ? "API" : "") . "Controller');";
+                $model->getTableName() . "\", " . (empty($controllerPath) ? "" : ($controllerPath . "\\"))
+                . $model->getName()->getName() . ($isApi ? "API" : "") . "Controller::class);";
             $path = $isApi ? $config->get("api_routes_path") : $config->get("routes_path");
             //get the route file content and check if our line does not already exist
             $content = file_get_contents($path);
             if (strpos($content, $command) === false) {
-                $content .= PHP_EOL . PHP_EOL . $command;
+                $content .= PHP_EOL . $command . PHP_EOL;
                 file_put_contents($path, $content);
             }
         }
