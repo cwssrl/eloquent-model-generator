@@ -550,7 +550,7 @@ abstract class EloquentRepository implements RepositoryContract
         }, $translatedSelect);
 
         return $query
-            ->join($transTableName, $transTableName . "." . str_singular($tableName) . "_id", "=", $tableName . ".id")
+            ->join($transTableName, $transTableName . "." . Str::singular($tableName) . "_id", "=", $tableName . ".id")
             ->select(array_merge($selectCurrentTable, $translatedSelect))
             ->where($transTableName . ".locale", \App::getLocale());
     }
