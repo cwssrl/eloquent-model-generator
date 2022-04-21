@@ -2,7 +2,7 @@
 
 namespace $APP_NAME$Traits;
 
-use Exception;
+use Throwable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
@@ -18,16 +18,17 @@ trait RestExceptionHandlerTrait
      * Creates a new JSON response based on exception type.
      *
      * @param Request $request
-     * @param Exception $e
+     * @param Throwable $e
      * @return \Illuminate\Http\JsonResponse
      */
-    protected function getJsonResponseForException(Request $request, Exception $e)
+    protected function getJsonResponseForException(Request $request, Throwable $e)
     {
         switch (true) {
             case $this->isModelNotFoundException($e):
                 $retval = $this->modelNotFound();
                 break;
             case $this->isValidationException($e):
+                /** @var ValidationException $e */
                 $retval = $this->badRequest("I dati non sono validi", 400, $e->errors());
                 break;
             case $this->isNotFoundHttpException($e):
@@ -41,7 +42,7 @@ trait RestExceptionHandlerTrait
                 break;
             case $this->isAuthorizationException($e):
                 $retval = $this->badRequest($e->getMessage(), 403);
-            break;
+                break;
             default:
                 $retval = $this->badRequest($e->getMessage(), 500);
         }
@@ -94,10 +95,10 @@ trait RestExceptionHandlerTrait
     /**
      * Determines if the given exception is an Eloquent model not found.
      *
-     * @param Exception $e
+     * @param Throwable $e
      * @return bool
      */
-    protected function isModelNotFoundException(Exception $e)
+    protected function isModelNotFoundException(Throwable $e)
     {
         return $e instanceof ModelNotFoundException;
     }
@@ -105,10 +106,10 @@ trait RestExceptionHandlerTrait
     /**
      * Determines if the given exception is a validation error.
      *
-     * @param Exception $e
+     * @param Throwable $e
      * @return bool
      */
-    protected function isValidationException(Exception $e)
+    protected function isValidationException(Throwable $e)
     {
         return $e instanceof ValidationException;
     }
@@ -116,10 +117,10 @@ trait RestExceptionHandlerTrait
     /**
      * Determines if the given exception is a not found http exception.
      *
-     * @param Exception $e
+     * @param Throwable $e
      * @return bool
      */
-    protected function isNotFoundHttpException(Exception $e)
+    protected function isNotFoundHttpException(Throwable $e)
     {
         return $e instanceof NotFoundHttpException;
     }
@@ -127,10 +128,10 @@ trait RestExceptionHandlerTrait
     /**
      * Determines if the given exception is a not allowed http exception.
      *
-     * @param Exception $e
+     * @param Throwable $e
      * @return bool
      */
-    protected function isNotAllowedException(Exception $e)
+    protected function isNotAllowedException(Throwable $e)
     {
         return $e instanceof MethodNotAllowedHttpException;
     }
@@ -138,10 +139,10 @@ trait RestExceptionHandlerTrait
     /**
      * Determines if the given exception is auth http exception.
      *
-     * @param Exception $e
+     * @param Throwable $e
      * @return bool
      */
-    protected function isAuthenticationException(Exception $e)
+    protected function isAuthenticationException(Throwable $e)
     {
         return $e instanceof AuthenticationException;
     }
@@ -149,10 +150,10 @@ trait RestExceptionHandlerTrait
     /**
     * Determines if the given exception is authR http exception.
     *
-    * @param Exception $e
+    * @param Throwable $e
     * @return bool
     */
-    protected function isAuthorizationException(Exception $e)
+    protected function isAuthorizationException(Throwable $e)
     {
         return $e instanceof AuthorizationException;
     }

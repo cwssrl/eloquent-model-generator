@@ -10,7 +10,7 @@ return [
         'namespace' => 'App\Models',
         'output_path' => 'Models',
         'except-tables' => 'migrations,users,password_resets',
-        'controller_path' => '',
+        'controller_path' => 'App\Http\Controllers',
         'routes_path' => 'routes/web.php',
         'request_namespace' => 'App\Http\Requests',
         'request_path' => 'Http/Requests',
