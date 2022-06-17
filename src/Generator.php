@@ -163,7 +163,7 @@ class Generator
         $method = new MethodModel("authorize");
         $method->setDocBlock(new DocBlockModel("Get the validation rules that apply to the request."
             . PHP_EOL . PHP_EOL
-            . "\t * @return bool"));
+            . "     * @return bool"));
         $method->setBody("return true;");
         $a->addMethod($method);
 
@@ -171,7 +171,7 @@ class Generator
         $method = new MethodModel("rules");
         $method->setDocBlock(new DocBlockModel("Determine if the user is authorized to make this request."
             . PHP_EOL
-            . "\t * @return array"));
+            . "     * @return array"));
         $method->setBody("return " . $modelName . '::$rules;');
         $a->addMethod($method);
 
