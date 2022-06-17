@@ -56,23 +56,40 @@ class RepositoryProcessor implements ProcessorInterface
             );
             $contractPath = $config->getAppNamespace() . "Repositories\\$modelName\\" . $modelName . "Contract";
             $repoPath = $config->getAppNamespace() . "Repositories\\$modelName\\Eloquent" . $modelName . "Repository";
-            $this->bindOnAppFile($contractPath, $repoPath);
+            $this->bindOnProvider($contractPath, $repoPath);
         }
     }
 
-    private function bindOnAppFile($contractName, $repoName)
+    private function bindOnProvider($contractName, $repoName)
     {
-        $appPath = base_path("bootstrap/app.php");
-        //\App\Repositories\Contracts\CommunityContentNewsContract
-        //\App\Repositories\Traits\EloquentCommunityContentNewsRepository
-        $stringToWrite = "\$app->bind($contractName::class,$repoName::class);";
-        $content = file_get_contents($appPath);
-        if (strpos($content, $stringToWrite) === false) {
-            $content = str_replace('return $app;', "", $content);
-            $content .= PHP_EOL . $stringToWrite;
-            $content .= PHP_EOL . 'return $app;';
-            file_put_contents($appPath, $content);
+        $file = base_path('app/Providers/RepositoryServiceProvider.php');
+        $line = "\\{$contractName}::class => \\{$repoName}::class";
+        $this->addArrayLineToFileIfMissing($file, 'bindings', $line);
+    }
+
+    private function addArrayLineIfMissing(string $key, string $line, string $content): string
+    {
+        $checkRegex = '/' . str_replace(' ', '\s+', str_replace('\\', '\\\\', $line)) . '/';
+        if (preg_match($checkRegex, $content) !== 1) {
+            // TODO: add to array with sorting?
+            $replaceRegex = "/([ \t]*)([a-zA-Z ]*[\$|'|\"]{$key}['|\"]? =>? \[)(.*?)?\s*,?\s*]/s";
+            $content = preg_replace_callback($replaceRegex, function ($matches) use ($line) {
+                $replace = "\n{$matches[1]}    {$line}";
+                if (trim($matches[3])) {
+                    $replace = $matches[3] . ',' . $replace;
+                }
+                return $matches[1] . $matches[2] . $replace . "\n" . $matches[1] . ']';
+            }, $content);
         }
+
+        return $content;
+    }
+
+    private function addArrayLineToFileIfMissing(string $filePath, string $key, string $line)
+    {
+        $content = file_get_contents($filePath);
+        $content = $this->addArrayLineIfMissing($key, $line, $content);
+        file_put_contents($filePath, $content);
     }
 
     private function checkIfBaseFilesAlreadyExistsOtherwiseCreate(Config $config, EloquentModel $model)
@@ -99,6 +116,21 @@ class RepositoryProcessor implements ProcessorInterface
             $repoResourceFolder,
             "EloquentRepository.php"
         );
+        $config->checkIfFileAlreadyExistsOrCopyIt(
+            $model,
+            Misc::appPath('Providers'),
+            "RepositoryServiceProvider.php",
+            $repoResourceFolder,
+            "RepositoryServiceProvider.php"
+        );
+        $this->registerServiceProvider();
+    }
+
+    private function registerServiceProvider()
+    {
+        $file = base_path('config/app.php');
+        $line = 'App\Providers\RepositoryServiceProvider::class';
+        $this->addArrayLineToFileIfMissing($file, 'providers', $line);
     }
 
     /**
